@@ -1,89 +1,167 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Air Quality Dashboard</title>
+<title>SAFETY ALERT SYSTEM AND MONITOR</title>
 
 <style>
 body {
   font-family: Arial;
   background: #0f172a;
   color: white;
+  display: flex;
+}
+
+/* LEFT PANEL */
+.sidebar {
+  width: 250px;
+  background: #1e293b;
+  padding: 20px;
+}
+
+/* RIGHT PANEL */
+.main {
+  flex: 1;
+  padding: 20px;
   text-align: center;
+}
+
+/* GRID */
+.grid {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .card {
   background: #1e293b;
   padding: 20px;
-  margin: 10px auto;
-  width: 200px;
   border-radius: 10px;
+  width: 150px;
+}
+
+.warning {
+  font-size: 20px;
+  margin-top: 10px;
 }
 
 button {
   padding: 10px;
-  margin-top: 20px;
-  cursor: pointer;
+  margin-top: 10px;
 }
 </style>
-
 </head>
 
 <body>
 
+<!-- LEFT SIDE -->
+<div class="sidebar">
+  <h2>📅 Filter Data</h2>
+
+  <label>From:</label><br>
+  <input type="date" id="fromDate"><br><br>
+
+  <label>To:</label><br>
+  <input type="date" id="toDate"><br><br>
+
+  <button onclick="downloadData()">Download Data</button>
+</div>
+
+<!-- RIGHT SIDE -->
+<div class="main">
+
 <h1>🌐 Air Quality Dashboard</h1>
+<h3 id="datetime"></h3>
 
-<h3 id="datetime">--</h3>
+<div class="grid">
+  <div class="card">Temp<br><span id="temp">--</span> °C</div>
+  <div class="card">Humidity<br><span id="hum">--</span> %</div>
+  <div class="card">MQ135<br><span id="mq135">--</span></div>
+  <div class="card">MQ7<br><span id="mq7">--</span></div>
+</div>
 
-<div class="card">Temperature: <span id="temp">--</span> °C</div>
-<div class="card">Humidity: <span id="hum">--</span> %</div>
-<div class="card">MQ135: <span id="mq135">--</span></div>
-<div class="card">MQ7: <span id="mq7">--</span></div>
+<!-- WARNING -->
+<div id="warning" class="warning">Status: Normal</div>
 
-<button onclick="downloadData()">Download Data</button>
+</div>
 
 <script>
 
-let dataLog = [];
+// Load stored data
+let dataLog = JSON.parse(localStorage.getItem("sensorData")) || [];
 
-// 🔹 Update Date & Time
+// Date & Time
 setInterval(() => {
-  let now = new Date();
-  document.getElementById("datetime").innerText = now.toLocaleString();
+  document.getElementById("datetime").innerText = new Date().toLocaleString();
 }, 1000);
 
-// 🔹 Simulated sensor data (replace later with ESP32)
+// Sensor simulation
 setInterval(() => {
+
+  let now = new Date();
+  let date = now.toISOString().split("T")[0];
 
   let temp = (20 + Math.random()*10).toFixed(1);
   let hum = (40 + Math.random()*20).toFixed(1);
-  let mq135 = (100 + Math.random()*50).toFixed(0);
-  let mq7 = (50 + Math.random()*30).toFixed(0);
+  let mq135 = Math.floor(100 + Math.random()*200);
+  let mq7 = Math.floor(50 + Math.random()*100);
 
   document.getElementById("temp").innerText = temp;
   document.getElementById("hum").innerText = hum;
   document.getElementById("mq135").innerText = mq135;
   document.getElementById("mq7").innerText = mq7;
 
+  // WARNING LOGIC
+  let warningText = "Normal";
+  let color = "lightgreen";
+
+  if(mq135 > 250 || mq7 > 120){
+    warningText = "⚠ HIGH GAS LEVEL";
+    color = "red";
+  }
+  else if(mq135 > 180 || mq7 > 80){
+    warningText = "⚠ MEDIUM GAS";
+    color = "orange";
+  }
+
+  document.getElementById("warning").innerText = "Status: " + warningText;
+  document.getElementById("warning").style.color = color;
+
   // Save data
-  let time = new Date().toLocaleString();
-  dataLog.push(`${time},${temp},${hum},${mq135},${mq7}`);
+  dataLog.push({date, time: now.toLocaleString(), temp, hum, mq135, mq7});
+  localStorage.setItem("sensorData", JSON.stringify(dataLog));
 
 }, 3000);
 
-// 🔹 Download CSV
-function downloadData() {
+// Download filtered data
+function downloadData(){
 
-  let csv = "Time,Temp,Humidity,MQ135,MQ7\n" + dataLog.join("\n");
+  let from = document.getElementById("fromDate").value;
+  let to = document.getElementById("toDate").value;
 
-  let blob = new Blob([csv], { type: 'text/csv' });
+  let filtered = dataLog.filter(d =>
+    (!from || d.date >= from) && (!to || d.date <= to)
+  );
+
+  if(filtered.length === 0){
+    alert("No data found");
+    return;
+  }
+
+  let csv = "Time,Temp,Humidity,MQ135,MQ7\n";
+
+  filtered.forEach(d => {
+    csv += `${d.time},${d.temp},${d.hum},${d.mq135},${d.mq7}\n`;
+  });
+
+  let blob = new Blob([csv], {type:'text/csv'});
   let url = URL.createObjectURL(blob);
 
   let a = document.createElement("a");
   a.href = url;
-  a.download = "sensor_data.csv";
+  a.download = "data.csv";
   a.click();
 }
-
 </script>
 
 </body>
