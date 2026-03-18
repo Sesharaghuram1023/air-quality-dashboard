@@ -6,7 +6,7 @@
 <style>
 body {
   font-family: Arial;
-  background-color: #0f172a;
+  background: #0f172a;
   color: white;
   text-align: center;
 }
@@ -14,13 +14,15 @@ body {
 .card {
   background: #1e293b;
   padding: 20px;
-  margin: 20px auto;
+  margin: 10px auto;
   width: 200px;
   border-radius: 10px;
 }
 
-.value {
-  font-size: 30px;
+button {
+  padding: 10px;
+  margin-top: 20px;
+  cursor: pointer;
 }
 </style>
 
@@ -30,25 +32,59 @@ body {
 
 <h1>🌐 Air Quality Dashboard</h1>
 
-<div class="card">
-  <h3>Temperature</h3>
-  <div class="value">25°C</div>
-</div>
+<h3 id="datetime">--</h3>
 
-<div class="card">
-  <h3>Humidity</h3>
-  <div class="value">60%</div>
-</div>
+<div class="card">Temperature: <span id="temp">--</span> °C</div>
+<div class="card">Humidity: <span id="hum">--</span> %</div>
+<div class="card">MQ135: <span id="mq135">--</span></div>
+<div class="card">MQ7: <span id="mq7">--</span></div>
 
-<div class="card">
-  <h3>MQ135</h3>
-  <div class="value">120</div>
-</div>
+<button onclick="downloadData()">Download Data</button>
 
-<div class="card">
-  <h3>MQ7</h3>
-  <div class="value">75</div>
-</div>
+<script>
+
+let dataLog = [];
+
+// 🔹 Update Date & Time
+setInterval(() => {
+  let now = new Date();
+  document.getElementById("datetime").innerText = now.toLocaleString();
+}, 1000);
+
+// 🔹 Simulated sensor data (replace later with ESP32)
+setInterval(() => {
+
+  let temp = (20 + Math.random()*10).toFixed(1);
+  let hum = (40 + Math.random()*20).toFixed(1);
+  let mq135 = (100 + Math.random()*50).toFixed(0);
+  let mq7 = (50 + Math.random()*30).toFixed(0);
+
+  document.getElementById("temp").innerText = temp;
+  document.getElementById("hum").innerText = hum;
+  document.getElementById("mq135").innerText = mq135;
+  document.getElementById("mq7").innerText = mq7;
+
+  // Save data
+  let time = new Date().toLocaleString();
+  dataLog.push(`${time},${temp},${hum},${mq135},${mq7}`);
+
+}, 3000);
+
+// 🔹 Download CSV
+function downloadData() {
+
+  let csv = "Time,Temp,Humidity,MQ135,MQ7\n" + dataLog.join("\n");
+
+  let blob = new Blob([csv], { type: 'text/csv' });
+  let url = URL.createObjectURL(blob);
+
+  let a = document.createElement("a");
+  a.href = url;
+  a.download = "sensor_data.csv";
+  a.click();
+}
+
+</script>
 
 </body>
 </html>
