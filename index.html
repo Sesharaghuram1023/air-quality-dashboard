@@ -11,16 +11,24 @@
       font-family: Arial;
     }
 
+    /* HEADER */
     header {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px;
+      position: relative;
       background: #1e293b;
+      padding: 10px;
+      text-align: center;
+    }
+
+    h2 {
+      margin: 0;
+      color: cyan;
     }
 
     #clock {
+      position: absolute;
+      right: 15px;
+      top: 10px;
       color: lime;
-      font-size: 18px;
     }
 
     .main {
@@ -53,7 +61,7 @@
       padding: 20px;
     }
 
-    /* 2x2 GRID */
+    /* GRID */
     .cards {
       display: grid;
       grid-template-columns: repeat(2, 200px);
@@ -90,7 +98,7 @@
 <body>
 
 <header>
-  <h2>🌍 Air Dashboard</h2>
+  <h2>🌍 Air Quality Dashboard</h2>
   <div id="clock"></div>
 </header>
 
@@ -109,7 +117,7 @@
     <button onclick="downloadData()">Download CSV</button>
   </div>
 
-  <!-- RIGHT PANEL -->
+  <!-- RIGHT -->
   <div class="right">
 
     <div class="cards">
@@ -138,7 +146,6 @@
 
     <div id="status" class="status">Status: Waiting...</div>
 
-    <!-- GRAPH -->
     <canvas id="chart" width="400" height="200"></canvas>
 
   </div>
@@ -154,7 +161,7 @@
 
 <script>
 
-// 🔥 Firebase config
+// Firebase config
 var firebaseConfig = {
   apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
   databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
@@ -173,19 +180,21 @@ setInterval(()=>{
 let temp=0, hum=0, mq135=0, mq7=0;
 let logData = [];
 
-// GRAPH
+// GRAPH (UPDATED)
 let chart = new Chart(document.getElementById("chart"), {
   type: 'line',
   data: {
     labels: [],
     datasets: [
       { label: "Temp", data: [] },
-      { label: "MQ135", data: [] }
+      { label: "Humidity", data: [] },
+      { label: "MQ135", data: [] },
+      { label: "MQ7", data: [] }
     ]
   }
 });
 
-// FIREBASE LISTENERS
+// FIREBASE
 db.ref("sensor/temperature").on("value", s=>{
   temp = s.val();
   document.getElementById("temp").innerText = temp + " °C";
@@ -220,25 +229,27 @@ db.ref("sensor/mq7").on("value", s=>{
   el.innerText="Status: "+status;
   el.style.color=color;
 
-  // LOG DATA
+  // LOG
   let time = new Date();
   logData.push({time,temp,hum,mq135,mq7});
 
   // GRAPH UPDATE
   chart.data.labels.push(time.toLocaleTimeString());
   chart.data.datasets[0].data.push(temp);
-  chart.data.datasets[1].data.push(mq135);
+  chart.data.datasets[1].data.push(hum);
+  chart.data.datasets[2].data.push(mq135);
+  chart.data.datasets[3].data.push(mq7);
   chart.update();
 });
 
-// DOWNLOAD FUNCTION
+// DOWNLOAD
 function downloadData(){
   let from = new Date(document.getElementById("fromDate").value);
   let to = new Date(document.getElementById("toDate").value);
 
   let filtered = logData.filter(d => d.time >= from && d.time <= to);
 
-  let csv = "Time,Temp,Hum,MQ135,MQ7\n";
+  let csv = "Time,Temp,Humidity,MQ135,MQ7\n";
 
   filtered.forEach(d=>{
     csv += `${d.time.toLocaleString()},${d.temp},${d.hum},${d.mq135},${d.mq7}\n`;
@@ -247,7 +258,7 @@ function downloadData(){
   let blob = new Blob([csv]);
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "sensor_data.csv";
+  a.download = "data.csv";
   a.click();
 }
 
