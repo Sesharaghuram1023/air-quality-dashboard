@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Air Dashboard</title>
+  <title>Smart Air Dashboard</title>
 
   <style>
     body {
@@ -29,7 +29,6 @@
       display: flex;
     }
 
-    /* LEFT PANEL */
     .left {
       width: 250px;
       background: #1e293b;
@@ -49,13 +48,11 @@
       cursor: pointer;
     }
 
-    /* RIGHT SIDE */
     .right {
       flex: 1;
       padding: 20px;
     }
 
-    /* SENSOR GRID */
     .cards {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -67,14 +64,14 @@
       padding: 20px;
       border-radius: 10px;
       text-align: center;
+      box-shadow: 0 0 10px rgba(0,255,255,0.2);
     }
 
     .value {
-      font-size: 22px;
-      color: #22c55e;
+      font-size: 24px;
+      margin-top: 5px;
     }
 
-    /* GRAPH GRID */
     .graphs {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -84,9 +81,16 @@
 
     canvas {
       width: 100% !important;
-      height: 250px !important;
+      height: 260px !important;
       background: white;
       border-radius: 10px;
+    }
+
+    .alert {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -94,7 +98,7 @@
 <body>
 
 <header>
-  <h2>🌍 Air Quality Dashboard</h2>
+  <h2>🌍 Smart Air Dashboard</h2>
   <div id="clock"></div>
 </header>
 
@@ -103,9 +107,9 @@
   <!-- LEFT -->
   <div class="left">
     <h3>📥 Download</h3>
-    <input type="date" id="fromDate">
-    <input type="date" id="toDate">
-    <button onclick="downloadData()">Download CSV</button>
+    <input type="date">
+    <input type="date">
+    <button>Download</button>
   </div>
 
   <!-- RIGHT -->
@@ -115,49 +119,37 @@
     <div class="cards">
 
       <div class="card">
-        <h3>Temperature</h3>
+        <h3>🌡 Temp</h3>
         <div id="temp" class="value">--</div>
       </div>
 
       <div class="card">
-        <h3>Humidity</h3>
+        <h3>💧 Humidity</h3>
         <div id="hum" class="value">--</div>
       </div>
 
       <div class="card">
-        <h3>MQ135</h3>
+        <h3>🌫 MQ135</h3>
         <div id="mq135" class="value">--</div>
       </div>
 
       <div class="card">
-        <h3>MQ7</h3>
+        <h3>🔥 MQ7</h3>
         <div id="mq7" class="value">--</div>
       </div>
 
     </div>
 
-    <!-- GRAPH BOXES -->
+    <!-- ALERT -->
+    <div id="alert" class="alert">Status: Normal</div>
+
+    <!-- GRAPHS -->
     <div class="graphs">
 
-      <div class="card">
-        <h4>Temperature Graph</h4>
-        <canvas id="chart1"></canvas>
-      </div>
-
-      <div class="card">
-        <h4>Humidity Graph</h4>
-        <canvas id="chart2"></canvas>
-      </div>
-
-      <div class="card">
-        <h4>MQ135 Graph</h4>
-        <canvas id="chart3"></canvas>
-      </div>
-
-      <div class="card">
-        <h4>MQ7 Graph</h4>
-        <canvas id="chart4"></canvas>
-      </div>
+      <canvas id="chart1"></canvas>
+      <canvas id="chart2"></canvas>
+      <canvas id="chart3"></canvas>
+      <canvas id="chart4"></canvas>
 
     </div>
 
@@ -173,7 +165,6 @@
 
 <script>
 
-// Firebase config
 var firebaseConfig = {
   apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
   databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
@@ -187,62 +178,86 @@ setInterval(()=>{
     new Date().toLocaleTimeString();
 },1000);
 
-// CREATE CHART FUNCTION
-function createChart(id,label){
+// GRAPH FUNCTION
+function createChart(id,label,color){
   return new Chart(document.getElementById(id), {
     type:'line',
     data:{
       labels:[],
       datasets:[{
         label: label,
-        data: []
+        borderColor: color,
+        backgroundColor: color,
+        data: [],
+        fill:false,
+        tension:0.4
       }]
+    },
+    options:{
+      animation:true,
+      plugins:{ legend:{ display:true } }
     }
   });
 }
 
-// CREATE 4 CHARTS
-let chart1 = createChart("chart1","Temp");
-let chart2 = createChart("chart2","Humidity");
-let chart3 = createChart("chart3","MQ135");
-let chart4 = createChart("chart4","MQ7");
+// CREATE COLORFUL GRAPHS
+let c1=createChart("chart1","Temp","red");
+let c2=createChart("chart2","Humidity","blue");
+let c3=createChart("chart3","MQ135","orange");
+let c4=createChart("chart4","MQ7","green");
 
-// UPDATE CHART
+// LIMIT GRAPH SIZE
 function updateChart(chart,value){
   chart.data.labels.push(new Date().toLocaleTimeString());
   chart.data.datasets[0].data.push(value);
+
+  if(chart.data.labels.length > 20){
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
+
   chart.update();
 }
 
-// FIREBASE DATA
+// FIREBASE
 db.ref("sensor/temperature").on("value", s=>{
   let v=s.val();
   document.getElementById("temp").innerText=v+" °C";
-  updateChart(chart1,v);
+  updateChart(c1,v);
 });
 
 db.ref("sensor/humidity").on("value", s=>{
   let v=s.val();
   document.getElementById("hum").innerText=v+" %";
-  updateChart(chart2,v);
+  updateChart(c2,v);
 });
 
 db.ref("sensor/mq135").on("value", s=>{
   let v=s.val();
   document.getElementById("mq135").innerText=v;
-  updateChart(chart3,v);
+  updateChart(c3,v);
 });
 
 db.ref("sensor/mq7").on("value", s=>{
   let v=s.val();
   document.getElementById("mq7").innerText=v;
-  updateChart(chart4,v);
-});
+  updateChart(c4,v);
 
-// DOWNLOAD
-function downloadData(){
-  alert("Download feature works with logged data (already implemented earlier).");
-}
+  // ALERT
+  let msg="Normal", color="lightgreen";
+
+  if(v>300){
+    msg="🚨 HIGH CO LEVEL!";
+    color="red";
+  } else if(v>200){
+    msg="⚠ MEDIUM CO";
+    color="orange";
+  }
+
+  let el=document.getElementById("alert");
+  el.innerText=msg;
+  el.style.color=color;
+});
 
 </script>
 
