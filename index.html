@@ -5,36 +5,43 @@
 
   <style>
     body {
-      background: black;
-      color: white;
+      margin: 0;
+      background: #0f172a;
+      color: #fff;
+      font-family: Arial, sans-serif;
       text-align: center;
-      font-family: Arial;
     }
 
     h1 {
-      color: cyan;
       margin-top: 20px;
+      color: #00ffc3;
     }
 
     .container {
       display: flex;
       justify-content: center;
-      gap: 30px;
-      margin-top: 50px;
+      gap: 20px;
+      margin-top: 40px;
+      flex-wrap: wrap;
     }
 
     .card {
-      background: #222;
-      padding: 30px;
+      background: #1e293b;
+      padding: 25px;
       border-radius: 15px;
       width: 200px;
-      box-shadow: 0 0 10px rgba(0,255,255,0.3);
+      box-shadow: 0 0 15px rgba(0,255,200,0.3);
     }
 
     .value {
-      font-size: 24px;
+      font-size: 28px;
       margin-top: 10px;
-      color: lime;
+      color: #22c55e;
+    }
+
+    .warning {
+      margin-top: 30px;
+      font-size: 20px;
     }
   </style>
 </head>
@@ -57,36 +64,56 @@
 
 </div>
 
-<!-- 🔥 Firebase Script -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+<div id="status" class="warning">Status: Waiting...</div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
-  databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
-};
+<!-- 🔥 Firebase v8 (no module issues) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+<script>
+  // 🔥 YOUR FIREBASE CONFIG
+  var firebaseConfig = {
+    apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
+    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com",
+  };
 
-// 🔥 Temperature
-const tempRef = ref(db, "sensor/temperature");
-onValue(tempRef, (snapshot) => {
-  const data = snapshot.val();
-  if (data !== null) {
-    document.getElementById("temp").innerText = data + " °C";
-  }
-});
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
 
-// 🔥 Humidity
-const humRef = ref(db, "sensor/humidity");
-onValue(humRef, (snapshot) => {
-  const data = snapshot.val();
-  if (data !== null) {
-    document.getElementById("hum").innerText = data + " %";
-  }
-});
+  // 🌡 Temperature
+  db.ref("sensor/temperature").on("value", function(snapshot) {
+    var temp = snapshot.val();
+    if (temp !== null) {
+      document.getElementById("temp").innerText = temp + " °C";
+    }
+  });
+
+  // 💧 Humidity
+  db.ref("sensor/humidity").on("value", function(snapshot) {
+    var hum = snapshot.val();
+    if (hum !== null) {
+      document.getElementById("hum").innerText = hum + " %";
+    }
+  });
+
+  // 🚨 Simple Status Logic
+  db.ref("sensor/temperature").on("value", function(snapshot) {
+    var temp = snapshot.val();
+    var status = "Normal";
+    var color = "lightgreen";
+
+    if (temp > 35) {
+      status = "⚠ HIGH TEMPERATURE";
+      color = "red";
+    } else if (temp > 30) {
+      status = "⚠ MEDIUM TEMPERATURE";
+      color = "orange";
+    }
+
+    var el = document.getElementById("status");
+    el.innerText = "Status: " + status;
+    el.style.color = color;
+  });
 </script>
 
 </body>
