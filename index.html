@@ -1,167 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Air Quality Dashboard</title>
-
-<style>
-body {
-  font-family: Arial;
-  background: #0f172a;
-  color: white;
-  display: flex;
-}
-
-/* LEFT PANEL */
-.sidebar {
-  width: 250px;
-  background: #1e293b;
-  padding: 20px;
-}
-
-/* RIGHT PANEL */
-.main {
-  flex: 1;
-  padding: 20px;
-  text-align: center;
-}
-
-/* GRID */
-.grid {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.card {
-  background: #1e293b;
-  padding: 20px;
-  border-radius: 10px;
-  width: 150px;
-}
-
-.warning {
-  font-size: 20px;
-  margin-top: 10px;
-}
-
-button {
-  padding: 10px;
-  margin-top: 10px;
-}
-</style>
+  <title>Air Quality Dashboard</title>
+  <style>
+    body { font-family: Arial; text-align: center; background:#111; color:#fff; }
+    .box { display:inline-block; margin:10px; padding:20px; border-radius:10px; background:#222; }
+    h1 { color:#00ffc3; }
+  </style>
 </head>
-
 <body>
 
-<!-- LEFT SIDE -->
-<div class="sidebar">
-  <h2>📅 Filter Data</h2>
+<h1>🌍 Air Quality Dashboard</h1>
 
-  <label>From:</label><br>
-  <input type="date" id="fromDate"><br><br>
-
-  <label>To:</label><br>
-  <input type="date" id="toDate"><br><br>
-
-  <button onclick="downloadData()">Download Data</button>
+<div class="box">
+  <h2>Temperature</h2>
+  <p id="temp">-- °C</p>
 </div>
 
-<!-- RIGHT SIDE -->
-<div class="main">
-
-<h1>SAFETY ALERT SYSTEM AND MONITOR</h1>
-<h3 id="datetime"></h3>
-
-<div class="grid">
-  <div class="card">Temp<br><span id="temp">--</span> °C</div>
-  <div class="card">Humidity<br><span id="hum">--</span> %</div>
-  <div class="card">MQ135<br><span id="mq135">--</span></div>
-  <div class="card">MQ7<br><span id="mq7">--</span></div>
+<div class="box">
+  <h2>Humidity</h2>
+  <p id="hum">-- %</p>
 </div>
 
-<!-- WARNING -->
-<div id="warning" class="warning">Status: Normal</div>
-
-</div>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+  // 🔥 YOUR FIREBASE CONFIG (same as you copied before)
+  var firebaseConfig = {
+    apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
+    authDomain: "air-quality-dashboard-d0c3b.firebaseapp.com",
+    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com",
+    projectId: "air-quality-dashboard-d0c3b",
+  };
 
-// Load stored data
-let dataLog = JSON.parse(localStorage.getItem("sensorData")) || [];
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
 
-// Date & Time
-setInterval(() => {
-  document.getElementById("datetime").innerText = new Date().toLocaleString();
-}, 1000);
-
-// Sensor simulation
-setInterval(() => {
-
-  let now = new Date();
-  let date = now.toISOString().split("T")[0];
-
-  let temp = (20 + Math.random()*10).toFixed(1);
-  let hum = (40 + Math.random()*20).toFixed(1);
-  let mq135 = Math.floor(100 + Math.random()*200);
-  let mq7 = Math.floor(50 + Math.random()*100);
-
-  document.getElementById("temp").innerText = temp;
-  document.getElementById("hum").innerText = hum;
-  document.getElementById("mq135").innerText = mq135;
-  document.getElementById("mq7").innerText = mq7;
-
-  // WARNING LOGIC
-  let warningText = "Normal";
-  let color = "lightgreen";
-
-  if(mq135 > 250 || mq7 > 120){
-    warningText = "⚠ HIGH GAS LEVEL";
-    color = "red";
-  }
-  else if(mq135 > 180 || mq7 > 80){
-    warningText = "⚠ MEDIUM GAS";
-    color = "orange";
-  }
-
-  document.getElementById("warning").innerText = "Status: " + warningText;
-  document.getElementById("warning").style.color = color;
-
-  // Save data
-  dataLog.push({date, time: now.toLocaleString(), temp, hum, mq135, mq7});
-  localStorage.setItem("sensorData", JSON.stringify(dataLog));
-
-}, 3000);
-
-// Download filtered data
-function downloadData(){
-
-  let from = document.getElementById("fromDate").value;
-  let to = document.getElementById("toDate").value;
-
-  let filtered = dataLog.filter(d =>
-    (!from || d.date >= from) && (!to || d.date <= to)
-  );
-
-  if(filtered.length === 0){
-    alert("No data found");
-    return;
-  }
-
-  let csv = "Time,Temp,Humidity,MQ135,MQ7\n";
-
-  filtered.forEach(d => {
-    csv += `${d.time},${d.temp},${d.hum},${d.mq135},${d.mq7}\n`;
+  // 🔹 Read Temperature
+  db.ref("/sensor/temperature").on("value", (snap) => {
+    document.getElementById("temp").innerHTML = snap.val() + " °C";
   });
 
-  let blob = new Blob([csv], {type:'text/csv'});
-  let url = URL.createObjectURL(blob);
-
-  let a = document.createElement("a");
-  a.href = url;
-  a.download = "data.csv";
-  a.click();
-}
+  // 🔹 Read Humidity
+  db.ref("/sensor/humidity").on("value", (snap) => {
+    document.getElementById("hum").innerHTML = snap.val() + " %";
+  });
 </script>
 
 </body>
