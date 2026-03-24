@@ -12,10 +12,26 @@
     }
 
     header {
-      text-align: center;
       padding: 10px;
       background: #1e293b;
       position: relative;
+      text-align: center;
+    }
+
+    /* 🔥 HEADER LAYOUT */
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .logo {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 0 10px cyan;
     }
 
     #clock {
@@ -23,6 +39,7 @@
       right: 15px;
       top: 10px;
       color: lime;
+      font-size: 16px;
     }
 
     .main {
@@ -98,7 +115,10 @@
 <body>
 
 <header>
-  <h2>SAFETY ALERT SYSTEM AND MONITOR</h2>
+  <div class="header-content">
+    <img src="logo.png" class="logo">
+    <h2>SAFETY ALERT SYSTEM AND MONITOR</h2>
+  </div>
   <div id="clock"></div>
 </header>
 
@@ -115,7 +135,6 @@
   <!-- RIGHT -->
   <div class="right">
 
-    <!-- SENSOR BOXES -->
     <div class="cards">
 
       <div class="card">
@@ -140,17 +159,13 @@
 
     </div>
 
-    <!-- ALERT -->
     <div id="alert" class="alert">Status: Normal</div>
 
-    <!-- GRAPHS -->
     <div class="graphs">
-
       <canvas id="chart1"></canvas>
       <canvas id="chart2"></canvas>
       <canvas id="chart3"></canvas>
       <canvas id="chart4"></canvas>
-
     </div>
 
   </div>
@@ -178,7 +193,7 @@ setInterval(()=>{
     new Date().toLocaleTimeString();
 },1000);
 
-// GRAPH FUNCTION
+// GRAPH
 function createChart(id,label,color){
   return new Chart(document.getElementById(id), {
     type:'line',
@@ -187,26 +202,18 @@ function createChart(id,label,color){
       datasets:[{
         label: label,
         borderColor: color,
-        backgroundColor: color,
         data: [],
-        fill:false,
         tension:0.4
       }]
-    },
-    options:{
-      animation:true,
-      plugins:{ legend:{ display:true } }
     }
   });
 }
 
-// CREATE COLORFUL GRAPHS
 let c1=createChart("chart1","Temp","red");
 let c2=createChart("chart2","Humidity","blue");
 let c3=createChart("chart3","MQ135","orange");
 let c4=createChart("chart4","MQ7","green");
 
-// LIMIT GRAPH SIZE
 function updateChart(chart,value){
   chart.data.labels.push(new Date().toLocaleTimeString());
   chart.data.datasets[0].data.push(value);
@@ -243,7 +250,6 @@ db.ref("sensor/mq7").on("value", s=>{
   document.getElementById("mq7").innerText=v;
   updateChart(c4,v);
 
-  // ALERT
   let msg="Normal", color="lightgreen";
 
   if(v>300){
