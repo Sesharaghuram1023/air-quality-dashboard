@@ -2,7 +2,6 @@
 <html>
 <head>
   <title>Air Quality Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
@@ -15,63 +14,75 @@
     header {
       display: flex;
       justify-content: space-between;
-      padding: 10px 20px;
+      padding: 10px;
       background: #1e293b;
     }
 
-    h1 { color: cyan; }
-
     #clock {
-      font-size: 18px;
       color: lime;
+      font-size: 18px;
     }
 
-    .container {
+    .main {
       display: flex;
-      justify-content: center;
+    }
+
+    /* LEFT PANEL */
+    .left {
+      width: 250px;
+      background: #1e293b;
+      padding: 15px;
+    }
+
+    .left input, .left button {
+      width: 100%;
+      margin-top: 5px;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .left button {
+      background: cyan;
+      cursor: pointer;
+    }
+
+    /* RIGHT SIDE */
+    .right {
+      flex: 1;
+      padding: 20px;
+    }
+
+    /* 2x2 GRID */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 200px);
       gap: 20px;
-      margin-top: 20px;
-      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .card {
       background: #1e293b;
       padding: 20px;
-      border-radius: 12px;
-      width: 200px;
+      border-radius: 10px;
       text-align: center;
     }
 
     .value {
-      font-size: 26px;
-      margin-top: 10px;
+      font-size: 22px;
       color: #22c55e;
     }
 
     .status {
-      margin-top: 20px;
       text-align: center;
+      margin-top: 10px;
       font-size: 18px;
     }
 
-    .panel {
-      margin: 30px;
-      padding: 20px;
-      background: #1e293b;
-      border-radius: 12px;
-      text-align: center;
-    }
-
-    input, button {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 5px;
-      border: none;
-    }
-
-    button {
-      background: cyan;
-      cursor: pointer;
+    canvas {
+      margin-top: 20px;
+      background: white;
+      border-radius: 10px;
     }
   </style>
 </head>
@@ -79,137 +90,167 @@
 <body>
 
 <header>
-  <h1>🌍 Air Quality Dashboard</h1>
-  <div id="clock">--:--:--</div>
+  <h2>🌍 Air Dashboard</h2>
+  <div id="clock"></div>
 </header>
 
-<div class="container">
+<div class="main">
 
-  <div class="card">
-    <h3>Temperature</h3>
-    <div id="temp" class="value">--</div>
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <h3>📥 Download Data</h3>
+
+    From:
+    <input type="date" id="fromDate">
+
+    To:
+    <input type="date" id="toDate">
+
+    <button onclick="downloadData()">Download CSV</button>
   </div>
 
-  <div class="card">
-    <h3>Humidity</h3>
-    <div id="hum" class="value">--</div>
+  <!-- RIGHT PANEL -->
+  <div class="right">
+
+    <div class="cards">
+
+      <div class="card">
+        <h3>Temperature</h3>
+        <div id="temp" class="value">--</div>
+      </div>
+
+      <div class="card">
+        <h3>Humidity</h3>
+        <div id="hum" class="value">--</div>
+      </div>
+
+      <div class="card">
+        <h3>MQ135</h3>
+        <div id="mq135" class="value">--</div>
+      </div>
+
+      <div class="card">
+        <h3>MQ7</h3>
+        <div id="mq7" class="value">--</div>
+      </div>
+
+    </div>
+
+    <div id="status" class="status">Status: Waiting...</div>
+
+    <!-- GRAPH -->
+    <canvas id="chart" width="400" height="200"></canvas>
+
   </div>
 
-  <div class="card">
-    <h3>MQ135</h3>
-    <div id="mq135" class="value">--</div>
-  </div>
-
-  <div class="card">
-    <h3>MQ7</h3>
-    <div id="mq7" class="value">--</div>
-  </div>
-
-</div>
-
-<div id="status" class="status">Status: Waiting...</div>
-
-<!-- 📅 Download Panel -->
-<div class="panel">
-  <h3>📥 Download Data</h3>
-  From: <input type="date" id="fromDate">
-  To: <input type="date" id="toDate">
-  <br>
-  <button onclick="downloadData()">Download CSV</button>
 </div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
+<!-- Chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-  // Firebase config
-  var firebaseConfig = {
-    apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
-    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
-  };
 
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.database();
+// 🔥 Firebase config
+var firebaseConfig = {
+  apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
+  databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
+};
 
-  let logData = [];
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 
-  // 🕒 Clock
-  function updateClock() {
-    let now = new Date();
-    document.getElementById("clock").innerText = now.toLocaleTimeString();
+// CLOCK
+setInterval(()=>{
+  document.getElementById("clock").innerText =
+    new Date().toLocaleTimeString();
+},1000);
+
+// DATA
+let temp=0, hum=0, mq135=0, mq7=0;
+let logData = [];
+
+// GRAPH
+let chart = new Chart(document.getElementById("chart"), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: "Temp", data: [] },
+      { label: "MQ135", data: [] }
+    ]
   }
-  setInterval(updateClock, 1000);
+});
 
-  let temp=0, hum=0, mq135=0, mq7=0;
+// FIREBASE LISTENERS
+db.ref("sensor/temperature").on("value", s=>{
+  temp = s.val();
+  document.getElementById("temp").innerText = temp + " °C";
+});
 
-  db.ref("sensor/temperature").on("value", s => {
-    temp = s.val();
-    document.getElementById("temp").innerText = temp + " °C";
-  });
+db.ref("sensor/humidity").on("value", s=>{
+  hum = s.val();
+  document.getElementById("hum").innerText = hum + " %";
+});
 
-  db.ref("sensor/humidity").on("value", s => {
-    hum = s.val();
-    document.getElementById("hum").innerText = hum + " %";
-  });
+db.ref("sensor/mq135").on("value", s=>{
+  mq135 = s.val();
+  document.getElementById("mq135").innerText = mq135;
+});
 
-  db.ref("sensor/mq135").on("value", s => {
-    mq135 = s.val();
-    document.getElementById("mq135").innerText = mq135;
-  });
+db.ref("sensor/mq7").on("value", s=>{
+  mq7 = s.val();
+  document.getElementById("mq7").innerText = mq7;
 
-  db.ref("sensor/mq7").on("value", s => {
-    mq7 = s.val();
-    document.getElementById("mq7").innerText = mq7;
+  // STATUS
+  let status="Normal", color="lightgreen";
 
-    // status
-    let status = "Normal";
-    let color = "lightgreen";
-
-    if (mq7 > 300 || mq135 > 400) {
-      status = "HIGH GAS";
-      color = "red";
-    } else if (mq7 > 200 || mq135 > 250) {
-      status = "MEDIUM GAS";
-      color = "orange";
-    }
-
-    let el = document.getElementById("status");
-    el.innerText = "Status: " + status;
-    el.style.color = color;
-
-    // store log
-    let time = new Date();
-    logData.push({
-      time: time,
-      temp: temp,
-      hum: hum,
-      mq135: mq135,
-      mq7: mq7
-    });
-  });
-
-  // 📥 Download filtered data
-  function downloadData() {
-    let from = new Date(document.getElementById("fromDate").value);
-    let to = new Date(document.getElementById("toDate").value);
-
-    let filtered = logData.filter(d => d.time >= from && d.time <= to);
-
-    let csv = "Time,Temp,Humidity,MQ135,MQ7\n";
-
-    filtered.forEach(d => {
-      csv += `${d.time.toLocaleString()},${d.temp},${d.hum},${d.mq135},${d.mq7}\n`;
-    });
-
-    let blob = new Blob([csv], { type: "text/csv" });
-    let url = URL.createObjectURL(blob);
-
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "filtered_data.csv";
-    a.click();
+  if(mq7>300 || mq135>400){
+    status="HIGH GAS";
+    color="red";
+  } else if(mq7>200){
+    status="MEDIUM GAS";
+    color="orange";
   }
+
+  let el=document.getElementById("status");
+  el.innerText="Status: "+status;
+  el.style.color=color;
+
+  // LOG DATA
+  let time = new Date();
+  logData.push({time,temp,hum,mq135,mq7});
+
+  // GRAPH UPDATE
+  chart.data.labels.push(time.toLocaleTimeString());
+  chart.data.datasets[0].data.push(temp);
+  chart.data.datasets[1].data.push(mq135);
+  chart.update();
+});
+
+// DOWNLOAD FUNCTION
+function downloadData(){
+  let from = new Date(document.getElementById("fromDate").value);
+  let to = new Date(document.getElementById("toDate").value);
+
+  let filtered = logData.filter(d => d.time >= from && d.time <= to);
+
+  let csv = "Time,Temp,Hum,MQ135,MQ7\n";
+
+  filtered.forEach(d=>{
+    csv += `${d.time.toLocaleString()},${d.temp},${d.hum},${d.mq135},${d.mq7}\n`;
+  });
+
+  let blob = new Blob([csv]);
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "sensor_data.csv";
+  a.click();
+}
+
 </script>
 
 </body>
