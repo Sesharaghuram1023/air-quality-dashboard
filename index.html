@@ -2,51 +2,91 @@
 <html>
 <head>
   <title>Air Quality Dashboard</title>
+
   <style>
-    body { font-family: Arial; text-align: center; background:#111; color:#fff; }
-    .box { display:inline-block; margin:10px; padding:20px; border-radius:10px; background:#222; }
-    h1 { color:#00ffc3; }
+    body {
+      background: black;
+      color: white;
+      text-align: center;
+      font-family: Arial;
+    }
+
+    h1 {
+      color: cyan;
+      margin-top: 20px;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 50px;
+    }
+
+    .card {
+      background: #222;
+      padding: 30px;
+      border-radius: 15px;
+      width: 200px;
+      box-shadow: 0 0 10px rgba(0,255,255,0.3);
+    }
+
+    .value {
+      font-size: 24px;
+      margin-top: 10px;
+      color: lime;
+    }
   </style>
 </head>
+
 <body>
 
 <h1>🌍 Air Quality Dashboard</h1>
 
-<div class="box">
-  <h2>Temperature</h2>
-  <p id="temp">-- °C</p>
+<div class="container">
+
+  <div class="card">
+    <h2>Temperature</h2>
+    <div id="temp" class="value">-- °C</div>
+  </div>
+
+  <div class="card">
+    <h2>Humidity</h2>
+    <div id="hum" class="value">-- %</div>
+  </div>
+
 </div>
 
-<div class="box">
-  <h2>Humidity</h2>
-  <p id="hum">-- %</p>
-</div>
+<!-- 🔥 Firebase Script -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
+  databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
+};
 
-<script>
-  // 🔥 YOUR FIREBASE CONFIG (same as you copied before)
-  var firebaseConfig = {
-    apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
-    authDomain: "air-quality-dashboard-d0c3b.firebaseapp.com",
-    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com",
-    projectId: "air-quality-dashboard-d0c3b",
-  };
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.database();
+// 🔥 Temperature
+const tempRef = ref(db, "sensor/temperature");
+onValue(tempRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data !== null) {
+    document.getElementById("temp").innerText = data + " °C";
+  }
+});
 
-  // 🔹 Read Temperature
-  db.ref("/sensor/temperature").on("value", (snap) => {
-    document.getElementById("temp").innerHTML = snap.val() + " °C";
-  });
-
-  // 🔹 Read Humidity
-  db.ref("/sensor/humidity").on("value", (snap) => {
-    document.getElementById("hum").innerHTML = snap.val() + " %";
-  });
+// 🔥 Humidity
+const humRef = ref(db, "sensor/humidity");
+onValue(humRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data !== null) {
+    document.getElementById("hum").innerText = data + " %";
+  }
+});
 </script>
 
 </body>
