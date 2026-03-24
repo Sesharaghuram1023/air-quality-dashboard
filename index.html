@@ -8,13 +8,13 @@
       margin: 0;
       background: #0f172a;
       color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
     }
 
     h1 {
+      color: cyan;
       margin-top: 20px;
-      color: #00ffc3;
     }
 
     .container {
@@ -30,18 +30,19 @@
       padding: 25px;
       border-radius: 15px;
       width: 200px;
-      box-shadow: 0 0 15px rgba(0,255,200,0.3);
+      box-shadow: 0 0 10px rgba(0,255,255,0.3);
     }
 
     .value {
-      font-size: 28px;
+      font-size: 26px;
       margin-top: 10px;
       color: #22c55e;
     }
 
-    .warning {
+    .status {
       margin-top: 30px;
       font-size: 20px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -52,26 +53,33 @@
 
 <div class="container">
 
+  <!-- Temperature -->
   <div class="card">
     <h2>Temperature</h2>
     <div id="temp" class="value">-- °C</div>
   </div>
 
+  <!-- Humidity -->
   <div class="card">
     <h2>Humidity</h2>
     <div id="hum" class="value">-- %</div>
   </div>
 
+  <!-- MQ135 -->
+  <div class="card">
+    <h2>MQ135 Gas</h2>
+    <div id="mq135" class="value">--</div>
+  </div>
+
 </div>
 
-<div id="status" class="warning">Status: Waiting...</div>
+<div id="status" class="status">Status: Waiting...</div>
 
-<!-- 🔥 Firebase v8 (no module issues) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-  // 🔥 YOUR FIREBASE CONFIG
   var firebaseConfig = {
     apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
     databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com",
@@ -80,40 +88,46 @@
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
 
-  // 🌡 Temperature
+  // Temperature
   db.ref("sensor/temperature").on("value", function(snapshot) {
-    var temp = snapshot.val();
+    let temp = snapshot.val();
     if (temp !== null) {
       document.getElementById("temp").innerText = temp + " °C";
     }
   });
 
-  // 💧 Humidity
+  // Humidity
   db.ref("sensor/humidity").on("value", function(snapshot) {
-    var hum = snapshot.val();
+    let hum = snapshot.val();
     if (hum !== null) {
       document.getElementById("hum").innerText = hum + " %";
     }
   });
 
-  // 🚨 Simple Status Logic
-  db.ref("sensor/temperature").on("value", function(snapshot) {
-    var temp = snapshot.val();
-    var status = "Normal";
-    var color = "lightgreen";
+  // MQ135
+  db.ref("sensor/mq135").on("value", function(snapshot) {
+    let gas = snapshot.val();
+    if (gas !== null) {
+      document.getElementById("mq135").innerText = gas;
 
-    if (temp > 35) {
-      status = "⚠ HIGH TEMPERATURE";
-      color = "red";
-    } else if (temp > 30) {
-      status = "⚠ MEDIUM TEMPERATURE";
-      color = "orange";
+      // 🔥 Gas Warning Logic
+      let status = "Normal";
+      let color = "lightgreen";
+
+      if (gas > 400) {
+        status = "⚠ HIGH GAS";
+        color = "red";
+      } else if (gas > 250) {
+        status = "⚠ MEDIUM GAS";
+        color = "orange";
+      }
+
+      let statusEl = document.getElementById("status");
+      statusEl.innerText = "Status: " + status;
+      statusEl.style.color = color;
     }
-
-    var el = document.getElementById("status");
-    el.innerText = "Status: " + status;
-    el.style.color = color;
   });
+
 </script>
 
 </body>
