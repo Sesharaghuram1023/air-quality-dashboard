@@ -2,47 +2,49 @@
 <html>
 <head>
   <title>Air Quality Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
       margin: 0;
       background: #0f172a;
       color: #fff;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
     }
-
-    h1 {
-      color: cyan;
-      margin-top: 20px;
-    }
+    h1 { color: cyan; margin-top: 20px; }
 
     .container {
       display: flex;
       justify-content: center;
       gap: 20px;
-      margin-top: 40px;
+      margin: 30px;
       flex-wrap: wrap;
     }
-
     .card {
       background: #1e293b;
-      padding: 25px;
+      padding: 20px;
       border-radius: 15px;
       width: 200px;
       box-shadow: 0 0 10px rgba(0,255,255,0.3);
     }
-
     .value {
       font-size: 26px;
       margin-top: 10px;
       color: #22c55e;
     }
-
     .status {
-      margin-top: 30px;
+      margin-top: 20px;
       font-size: 20px;
       font-weight: bold;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      background: cyan;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -53,79 +55,109 @@
 
 <div class="container">
 
-  <!-- Temperature -->
   <div class="card">
     <h2>Temperature</h2>
     <div id="temp" class="value">-- °C</div>
   </div>
 
-  <!-- Humidity -->
   <div class="card">
     <h2>Humidity</h2>
     <div id="hum" class="value">-- %</div>
   </div>
 
-  <!-- MQ135 -->
   <div class="card">
-    <h2>MQ135 Gas</h2>
+    <h2>MQ135</h2>
     <div id="mq135" class="value">--</div>
+  </div>
+
+  <div class="card">
+    <h2>MQ7 (CO)</h2>
+    <div id="mq7" class="value">--</div>
   </div>
 
 </div>
 
 <div id="status" class="status">Status: Waiting...</div>
 
-<!-- Firebase -->
+<button onclick="downloadData()">Download Data</button>
+
+<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
+  // 🔥 Your Firebase config
   var firebaseConfig = {
     apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
-    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com",
+    databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
   };
 
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
 
-  // Temperature
-  db.ref("sensor/temperature").on("value", function(snapshot) {
-    let temp = snapshot.val();
-    if (temp !== null) {
-      document.getElementById("temp").innerText = temp + " °C";
+  let logData = [];
+
+  function updateStatus(temp, mq135, mq7) {
+    let status = "Normal";
+    let color = "lightgreen";
+
+    if (mq7 > 300 || mq135 > 400) {
+      status = "⚠ HIGH GAS LEVEL";
+      color = "red";
+    } else if (mq7 > 200 || mq135 > 250) {
+      status = "⚠ MEDIUM GAS";
+      color = "orange";
     }
+
+    let el = document.getElementById("status");
+    el.innerText = "Status: " + status;
+    el.style.color = color;
+  }
+
+  function logValues(temp, hum, mq135, mq7) {
+    let time = new Date().toLocaleString();
+    logData.push(`${time},${temp},${hum},${mq135},${mq7}`);
+  }
+
+  function downloadData() {
+    let csv = "Time,Temp,Humidity,MQ135,MQ7\n" + logData.join("\n");
+
+    let blob = new Blob([csv], { type: 'text/csv' });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "sensor_data.csv";
+    a.click();
+  }
+
+  let tempVal = 0, humVal = 0, mq135Val = 0, mq7Val = 0;
+
+  db.ref("sensor/temperature").on("value", snap => {
+    tempVal = snap.val();
+    if (tempVal !== null)
+      document.getElementById("temp").innerText = tempVal + " °C";
   });
 
-  // Humidity
-  db.ref("sensor/humidity").on("value", function(snapshot) {
-    let hum = snapshot.val();
-    if (hum !== null) {
-      document.getElementById("hum").innerText = hum + " %";
-    }
+  db.ref("sensor/humidity").on("value", snap => {
+    humVal = snap.val();
+    if (humVal !== null)
+      document.getElementById("hum").innerText = humVal + " %";
   });
 
-  // MQ135
-  db.ref("sensor/mq135").on("value", function(snapshot) {
-    let gas = snapshot.val();
-    if (gas !== null) {
-      document.getElementById("mq135").innerText = gas;
+  db.ref("sensor/mq135").on("value", snap => {
+    mq135Val = snap.val();
+    if (mq135Val !== null)
+      document.getElementById("mq135").innerText = mq135Val;
+  });
 
-      // 🔥 Gas Warning Logic
-      let status = "Normal";
-      let color = "lightgreen";
+  db.ref("sensor/mq7").on("value", snap => {
+    mq7Val = snap.val();
+    if (mq7Val !== null)
+      document.getElementById("mq7").innerText = mq7Val;
 
-      if (gas > 400) {
-        status = "⚠ HIGH GAS";
-        color = "red";
-      } else if (gas > 250) {
-        status = "⚠ MEDIUM GAS";
-        color = "orange";
-      }
-
-      let statusEl = document.getElementById("status");
-      statusEl.innerText = "Status: " + status;
-      statusEl.style.color = color;
-    }
+    updateStatus(tempVal, mq135Val, mq7Val);
+    logValues(tempVal, humVal, mq135Val, mq7Val);
   });
 
 </script>
