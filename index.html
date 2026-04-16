@@ -33,6 +33,7 @@
       position: absolute;
       right: 15px;
       color: lime;
+      font-size: 16px;
     }
 
     .main {
@@ -43,6 +44,7 @@
       width: 260px;
       background: rgba(30,41,59,0.9);
       padding: 20px;
+      backdrop-filter: blur(10px);
     }
 
     .left input, .left button {
@@ -55,14 +57,8 @@
 
     .left button {
       background: cyan;
-      font-weight: bold;
       cursor: pointer;
-    }
-
-    .status {
-      margin-top: 15px;
       font-weight: bold;
-      text-align: center;
     }
 
     .right {
@@ -70,17 +66,18 @@
       padding: 20px;
     }
 
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(2,1fr);
-      gap: 20px;
-    }
-
     .card {
       background: rgba(30,41,59,0.9);
       padding: 20px;
       border-radius: 10px;
       text-align: center;
+      box-shadow: 0 0 15px rgba(0,255,255,0.2);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 20px;
     }
 
     .value {
@@ -96,6 +93,8 @@
     }
 
     canvas {
+      width: 100% !important;
+      height: 260px !important;
       background: white;
       border-radius: 10px;
     }
@@ -103,6 +102,7 @@
     .alert {
       margin-top: 15px;
       text-align: center;
+      font-size: 18px;
       font-weight: bold;
     }
   </style>
@@ -118,6 +118,7 @@
 
 <div class="main">
 
+  <!-- LEFT -->
   <div class="left">
     <h3>📥 Download</h3>
 
@@ -125,10 +126,9 @@
     <input type="date" id="endDate">
 
     <button onclick="downloadData()">Download</button>
-
-    <div id="status" class="status">🔴 Checking...</div>
   </div>
 
+  <!-- RIGHT -->
   <div class="right">
 
     <div class="cards">
@@ -153,7 +153,7 @@
       </div>
     </div>
 
-    <div id="alert" class="alert">Waiting for Data...</div>
+    <div id="alert" class="alert">Status: Waiting for Data...</div>
 
     <div class="graphs">
       <canvas id="chart1"></canvas>
@@ -171,6 +171,7 @@
 
 <script>
 
+// FIREBASE CONFIG (ALREADY CORRECT)
 var firebaseConfig = {
   apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
   databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
@@ -184,20 +185,10 @@ setInterval(()=>{
     new Date().toLocaleTimeString();
 },1000);
 
-// WIFI STATUS CHECK
-setInterval(()=>{
-  db.ref("sensor").once("value")
-  .then(s=>{
-    if(s.exists()){
-      document.getElementById("status").innerText="🟢 Connected";
-    } else {
-      document.getElementById("status").innerText="🔴 No Data";
-    }
-  })
-  .catch(()=>{
-    document.getElementById("status").innerText="❌ Error";
-  });
-},3000);
+// DEBUG
+db.ref("sensor").on("value", s=>{
+  console.log("DATA:", s.val());
+});
 
 // CHART
 function createChart(id,label,color){
@@ -232,27 +223,27 @@ function updateChart(chart,value){
   chart.update();
 }
 
-// LIVE DATA
+// DATA
 db.ref("sensor/temperature").on("value", s=>{
-  let v=s.val()||0;
+  let v = s.val() || 0;
   document.getElementById("temp").innerText=v+" °C";
   updateChart(c1,v);
 });
 
 db.ref("sensor/humidity").on("value", s=>{
-  let v=s.val()||0;
+  let v = s.val() || 0;
   document.getElementById("hum").innerText=v+" %";
   updateChart(c2,v);
 });
 
 db.ref("sensor/mq135").on("value", s=>{
-  let v=s.val()||0;
+  let v = s.val() || 0;
   document.getElementById("mq135").innerText=v;
   updateChart(c3,v);
 });
 
 db.ref("sensor/mq7").on("value", s=>{
-  let v=s.val()||0;
+  let v = s.val() || 0;
   document.getElementById("mq7").innerText=v;
   updateChart(c4,v);
 
@@ -271,7 +262,7 @@ db.ref("sensor/mq7").on("value", s=>{
   el.style.color=color;
 });
 
-// DOWNLOAD WITH DATE + TIME
+// DOWNLOAD
 function downloadData(){
   let start = document.getElementById("startDate").value;
   let end = document.getElementById("endDate").value;
@@ -284,10 +275,8 @@ function downloadData(){
   db.ref("sensor").once("value", snapshot=>{
     let d = snapshot.val();
 
-    let now = new Date();
-
-    let csv = "Date,Time,Temperature,Humidity,MQ135,MQ7\n";
-    csv += `${now.toLocaleDateString()},${now.toLocaleTimeString()},${d.temperature},${d.humidity},${d.mq135},${d.mq7}`;
+    let csv = "Temperature,Humidity,MQ135,MQ7\n";
+    csv += `${d.temperature},${d.humidity},${d.mq135},${d.mq7}`;
 
     let blob = new Blob([csv], {type:"text/csv"});
     let url = URL.createObjectURL(blob);
