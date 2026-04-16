@@ -14,17 +14,17 @@
     header {
       padding: 10px;
       background: #0f172a;
-      position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
+      position: relative;
     }
 
     .logo {
       position: absolute;
       left: 15px;
-      width: 80px;
-      height: 80px;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
       box-shadow: 0 0 15px cyan;
     }
@@ -33,7 +33,6 @@
       position: absolute;
       right: 15px;
       color: lime;
-      font-size: 16px;
     }
 
     .main {
@@ -44,7 +43,6 @@
       width: 260px;
       background: rgba(30,41,59,0.9);
       padding: 20px;
-      backdrop-filter: blur(10px);
     }
 
     .left input, .left button {
@@ -57,7 +55,13 @@
 
     .left button {
       background: cyan;
+      font-weight: bold;
       cursor: pointer;
+    }
+
+    .status {
+      margin-top: 15px;
+      text-align: center;
       font-weight: bold;
     }
 
@@ -66,18 +70,17 @@
       padding: 20px;
     }
 
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2,1fr);
+      gap: 20px;
+    }
+
     .card {
       background: rgba(30,41,59,0.9);
       padding: 20px;
       border-radius: 10px;
       text-align: center;
-      box-shadow: 0 0 15px rgba(0,255,255,0.2);
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(2,1fr);
-      gap: 20px;
     }
 
     .value {
@@ -93,16 +96,14 @@
     }
 
     canvas {
-      width: 100% !important;
-      height: 260px !important;
       background: white;
       border-radius: 10px;
+      height: 260px !important;
     }
 
     .alert {
       margin-top: 15px;
       text-align: center;
-      font-size: 18px;
       font-weight: bold;
     }
   </style>
@@ -118,7 +119,6 @@
 
 <div class="main">
 
-  <!-- LEFT -->
   <div class="left">
     <h3>📥 Download</h3>
 
@@ -126,9 +126,10 @@
     <input type="date" id="endDate">
 
     <button onclick="downloadData()">Download</button>
+
+    <div id="status" class="status">🔴 Checking...</div>
   </div>
 
-  <!-- RIGHT -->
   <div class="right">
 
     <div class="cards">
@@ -153,7 +154,7 @@
       </div>
     </div>
 
-    <div id="alert" class="alert">Status: Waiting for Data...</div>
+    <div id="alert" class="alert">Waiting for Data...</div>
 
     <div class="graphs">
       <canvas id="chart1"></canvas>
@@ -171,7 +172,6 @@
 
 <script>
 
-// FIREBASE CONFIG (ALREADY CORRECT)
 var firebaseConfig = {
   apiKey: "AIzaSyAVCi2nIj1Ru2FUZLCRCi68H0gyhEWmduQ",
   databaseURL: "https://air-quality-dashboard-d0c3b-default-rtdb.firebaseio.com"
@@ -185,24 +185,23 @@ setInterval(()=>{
     new Date().toLocaleTimeString();
 },1000);
 
-// DEBUG
-db.ref("sensor").on("value", s=>{
-  console.log("DATA:", s.val());
-});
+// WIFI STATUS
+setInterval(()=>{
+  db.ref("sensor").once("value")
+  .then(s=>{
+    document.getElementById("status").innerText =
+      s.exists() ? "🟢 Connected" : "🔴 No Data";
+  })
+  .catch(()=>{
+    document.getElementById("status").innerText="❌ Error";
+  });
+},3000);
 
 // CHART
 function createChart(id,label,color){
   return new Chart(document.getElementById(id), {
     type:'line',
-    data:{
-      labels:[],
-      datasets:[{
-        label: label,
-        borderColor: color,
-        data: [],
-        tension:0.4
-      }]
-    }
+    data:{ labels:[], datasets:[{ label, borderColor:color, data:[], tension:0.4 }] }
   });
 }
 
@@ -213,77 +212,63 @@ let c4=createChart("chart4","MQ7","green");
 
 function updateChart(chart,value){
   chart.data.labels.push(new Date().toLocaleTimeString());
-  chart.data.datasets[0].data.push(value || 0);
+  chart.data.datasets[0].data.push(value);
 
-  if(chart.data.labels.length > 20){
+  if(chart.data.labels.length>20){
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
   }
-
   chart.update();
 }
 
-// DATA
-db.ref("sensor/temperature").on("value", s=>{
-  let v = s.val() || 0;
-  document.getElementById("temp").innerText=v+" °C";
-  updateChart(c1,v);
-});
+// 🔥 MAIN FIX HERE
+db.ref("sensor").on("value", s=>{
+  let d = s.val();
 
-db.ref("sensor/humidity").on("value", s=>{
-  let v = s.val() || 0;
-  document.getElementById("hum").innerText=v+" %";
-  updateChart(c2,v);
-});
+  console.log("DATA:", d);
 
-db.ref("sensor/mq135").on("value", s=>{
-  let v = s.val() || 0;
-  document.getElementById("mq135").innerText=v;
-  updateChart(c3,v);
-});
-
-db.ref("sensor/mq7").on("value", s=>{
-  let v = s.val() || 0;
-  document.getElementById("mq7").innerText=v;
-  updateChart(c4,v);
-
-  let msg="Normal", color="lightgreen";
-
-  if(v>300){
-    msg="🚨 HIGH CO LEVEL!";
-    color="red";
-  } else if(v>200){
-    msg="⚠ MEDIUM CO";
-    color="orange";
+  if(!d){
+    document.getElementById("alert").innerText="No Data Coming";
+    return;
   }
 
-  let el=document.getElementById("alert");
-  el.innerText=msg;
-  el.style.color=color;
+  let t=d.temperature||0;
+  let h=d.humidity||0;
+  let m1=d.mq135||0;
+  let m2=d.mq7||0;
+
+  document.getElementById("temp").innerText=t+" °C";
+  document.getElementById("hum").innerText=h+" %";
+  document.getElementById("mq135").innerText=m1;
+  document.getElementById("mq7").innerText=m2;
+
+  updateChart(c1,t);
+  updateChart(c2,h);
+  updateChart(c3,m1);
+  updateChart(c4,m2);
 });
 
 // DOWNLOAD
 function downloadData(){
-  let start = document.getElementById("startDate").value;
-  let end = document.getElementById("endDate").value;
-
-  if(!start || !end){
-    alert("Select dates");
-    return;
-  }
-
   db.ref("sensor").once("value", snapshot=>{
     let d = snapshot.val();
 
-    let csv = "Temperature,Humidity,MQ135,MQ7\n";
-    csv += `${d.temperature},${d.humidity},${d.mq135},${d.mq7}`;
+    if(!d){
+      alert("No data available");
+      return;
+    }
 
-    let blob = new Blob([csv], {type:"text/csv"});
-    let url = URL.createObjectURL(blob);
+    let now=new Date();
 
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "sensor_data.csv";
+    let csv="Date,Time,Temperature,Humidity,MQ135,MQ7\n";
+    csv+=`${now.toLocaleDateString()},${now.toLocaleTimeString()},${d.temperature},${d.humidity},${d.mq135},${d.mq7}`;
+
+    let blob=new Blob([csv],{type:"text/csv"});
+    let url=URL.createObjectURL(blob);
+
+    let a=document.createElement("a");
+    a.href=url;
+    a.download="sensor_data.csv";
     a.click();
   });
 }
