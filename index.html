@@ -93,6 +93,13 @@
       font-weight: bold;
     }
 
+    .airStatus {
+      margin: 15px 0;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
     .graphs {
       display: grid;
       grid-template-columns: repeat(2,1fr);
@@ -150,15 +157,18 @@
       </div>
 
       <div class="card">
-        <h3>🌫 MQ135</h3>
+        <h3>🌫 Ammonia</h3>
         <div id="mq135" class="value">--</div>
       </div>
 
       <div class="card">
-        <h3>🔥 MQ7</h3>
+        <h3>🔥 Carbon Monoxide</h3>
         <div id="mq7" class="value">--</div>
       </div>
     </div>
+
+    <!-- 🔥 AIR QUALITY STATUS -->
+    <div id="airStatus" class="airStatus">Air Quality: --</div>
 
     <div class="graphs">
       <canvas id="chart1"></canvas>
@@ -194,15 +204,7 @@ setInterval(()=>{
 function createChart(id,label,color){
   return new Chart(document.getElementById(id), {
     type:'line',
-    data:{
-      labels:[],
-      datasets:[{
-        label: label,
-        borderColor: color,
-        data: [],
-        tension:0.4
-      }]
-    }
+    data:{ labels:[], datasets:[{ label, borderColor:color, data:[], tension:0.4 }] }
   });
 }
 
@@ -214,7 +216,6 @@ let c4=createChart("chart4","MQ7","green");
 function updateChart(chart,value){
   chart.data.labels.push(new Date().toLocaleTimeString());
   chart.data.datasets[0].data.push(value);
-
   if(chart.data.labels.length>20){
     chart.data.labels.shift();
     chart.data.datasets[0].data.shift();
@@ -232,25 +233,47 @@ db.ref("sensor").on("value", s=>{
 
   lastUpdateTime = Date.now();
 
-  document.getElementById("temp").innerText=d.temperature+" °C";
-  document.getElementById("hum").innerText=d.humidity+" %";
-  document.getElementById("mq135").innerText=d.mq135;
-  document.getElementById("mq7").innerText=d.mq7;
+  let t=d.temperature||0;
+  let h=d.humidity||0;
+  let m1=d.mq135||0;
+  let m2=d.mq7||0;
 
-  updateChart(c1,d.temperature);
-  updateChart(c2,d.humidity);
-  updateChart(c3,d.mq135);
-  updateChart(c4,d.mq7);
+  document.getElementById("temp").innerText=t+" °C";
+  document.getElementById("hum").innerText=h+" %";
+  document.getElementById("mq135").innerText=m1;
+  document.getElementById("mq7").innerText=m2;
+
+  updateChart(c1,t);
+  updateChart(c2,h);
+  updateChart(c3,m1);
+  updateChart(c4,m2);
+
+  // 🔥 AIR QUALITY LOGIC
+  let status="Good";
+  let color="lightgreen";
+
+  if(m1>200 || m2>300){
+    status="Bad";
+    color="red";
+  }
+  else if(m1>120 || m2>150){
+    status="Moderate";
+    color="orange";
+  }
+
+  let air=document.getElementById("airStatus");
+  air.innerText="Air Quality: "+status;
+  air.style.color=color;
 });
 
 // STATUS CHECK
 setInterval(()=>{
-  let now = Date.now();
+  let now=Date.now();
 
-  if(now - lastUpdateTime < 5000){
-    document.getElementById("status").innerText = "🟢 WiFi Connected";
-  } else {
-    document.getElementById("status").innerText = "🔴 WiFi Disconnected";
+  if(now-lastUpdateTime<5000){
+    document.getElementById("status").innerText="🟢 WiFi Connected";
+  }else{
+    document.getElementById("status").innerText="🔴 WiFi Disconnected";
   }
 },2000);
 
@@ -258,10 +281,7 @@ setInterval(()=>{
 function downloadData(){
   db.ref("sensor").once("value", snap=>{
     let d=snap.val();
-    if(!d){
-      alert("No data");
-      return;
-    }
+    if(!d){ alert("No data"); return; }
 
     let now=new Date();
 
